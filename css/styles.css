@@ -1,3 +1,4 @@
+/* styles.css */
 :root {
     --bg: #0d1117; 
     --surface: #161b22; 
@@ -134,25 +135,14 @@ input[type="text"]:focus, textarea:focus { border-color: var(--primary); outline
 .block:hover { border-color: #484f58; }
 .block-header-ui { padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
 
-/* 拖拽虚位样式 */
-.sortable-placeholder {
-    border: 2px dashed var(--primary);
+/* SortableJS 提供的拖拽占位符与拖拽状态样式 */
+.sortable-ghost {
+    opacity: 0.4;
     background: rgba(88, 166, 255, 0.05);
-    border-radius: var(--radius);
-    margin-bottom: 12px;
-    height: 54px;
-    transition: transform 0.2s ease-out;
+    border: 2px dashed var(--primary);
 }
-
-/* 彻底脱离文档流，不干扰虚位计算，但不使用 display:none 防止拖拽中断 */
-.block.dragging { 
-    opacity: 0 !important; 
-    height: 0 !important; 
-    min-height: 0 !important; 
-    padding: 0 !important; 
-    margin: 0 !important; 
-    border: 0 !important; 
-    overflow: hidden !important; 
+.sortable-drag {
+    cursor: grabbing !important;
 }
 
 .block-info { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

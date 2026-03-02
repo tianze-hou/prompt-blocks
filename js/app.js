@@ -1,13 +1,9 @@
+// app.js
 // 状态管理
 let blocks = [];
 let enc = null;
 let isTokenizerReady = false;
-
-// 拖拽相关状态
-let draggedIndex = null;
-let draggedElement = null;
-const placeholder = document.createElement('div');
-placeholder.className = 'sortable-placeholder';
+let sortableInstance = null; // SortableJS 实例
 
 // DOM 元素缓存
 const DOM = {
@@ -87,12 +83,32 @@ function bindEvents() {
     });
 }
 
+function initSortable() {
+    if (sortableInstance) {
+        sortableInstance.destroy();
+    }
+    // 使用 SortableJS 实现丝滑拖拽
+    sortableInstance = new Sortable(DOM.blocksContainer, {
+        animation: 150,
+        handle: '.drag-handle', // 只有拖拽图标才能触发拖拽
+        ghostClass: 'sortable-ghost', // 拖拽时的虚影样式
+        dragClass: 'sortable-drag',
+        onEnd: function (evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+            // 更新底层数据数组，保持与 DOM 一致
+            const movedItem = blocks.splice(evt.oldIndex, 1)[0];
+            blocks.splice(evt.newIndex, 0, movedItem);
+            generateOutput();
+        }
+    });
+}
+
 function addPromptBlock() {
     const val = DOM.promptInput.value.trim();
     if (!val) return showToast("请输入内容后再添加", true);
     
     blocks.push({ 
-        id: Date.now().toString(), 
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 7), 
         type: 'prompt', 
         name: 'Instruction Block', 
         content: val, 
@@ -109,7 +125,7 @@ function processFiles(files) {
         const reader = new FileReader();
         reader.onload = (ev) => {
             blocks.push({ 
-                id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
                 type: 'file', 
                 name: file.name, 
                 content: ev.target.result, 
@@ -128,13 +144,10 @@ function processFiles(files) {
 
 function renderBlocks() {
     let htmlStr = '';
-    blocks.forEach((block, index) => {
+    // 注意：这里的操作全部改为基于 block.id，防止拖拽后索引错位
+    blocks.forEach((block) => {
         htmlStr += `
-            <div class="block" draggable="true" 
-                 ondragstart="handleDragStart(${index}, event)" 
-                 ondragover="handleDragOver(event)" 
-                 ondrop="handleDrop(event)"
-                 ondragend="handleDragEnd(event)">
+            <div class="block" data-id="${block.id}">
                 <div class="block-header-ui">
                     <div class="drag-handle" title="拖拽排序">⠿</div>
                     <div class="block-info">
@@ -143,114 +156,58 @@ function renderBlocks() {
                             <span style="font-weight:bold; color: var(--text-primary);">${block.name}</span>
                         </div>
                     </div>
-                    <button class="btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="toggleSettings(${index})">⚙️ 设置</button>
-                    <button style="background:none; border:none; color:var(--danger); cursor:pointer; margin-left:8px; padding: 4px;" onclick="removeBlock(${index})" title="删除">✕</button>
+                    <button class="btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="toggleSettings('${block.id}')">⚙️ 设置</button>
+                    <button style="background:none; border:none; color:var(--danger); cursor:pointer; margin-left:8px; padding: 4px;" onclick="removeBlock('${block.id}')" title="删除">✕</button>
                 </div>
-                <div class="block-settings" id="settings-${index}">
+                <div class="block-settings" id="settings-${block.id}">
                     <div class="switch-group">
                         <label class="switch">
-                            <input type="checkbox" ${block.showTitle ? 'checked' : ''} onchange="updateBlockConfig(${index}, 'showTitle', this.checked)">
+                            <input type="checkbox" ${block.showTitle ? 'checked' : ''} onchange="updateBlockConfig('${block.id}', 'showTitle', this.checked)">
                             <span class="slider"></span>
                         </label>
                         <span style="font-size:11px; color: var(--text-secondary);">在最终输出中包含此块的标题</span>
                     </div>
-                    <input type="text" id="custom-tpl-${index}" value="${block.customTpl}" placeholder="覆盖默认模板，例如: // 文件名: {{name}}" oninput="updateBlockConfig(${index}, 'customTpl', this.value)">
+                    <input type="text" id="custom-tpl-${block.id}" value="${block.customTpl}" placeholder="覆盖默认模板，例如: // 文件名: {{name}}" oninput="updateBlockConfig('${block.id}', 'customTpl', this.value)">
                     
                     <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
                         <span style="font-size: 11px; color: var(--text-secondary);">快捷预设:</span>
-                        <span class="tag tag-preset" onclick="applyPreset(${index}, '--- INSTRUCTION ---')">Instruction</span>
-                        <span class="tag tag-preset" onclick="applyPreset(${index}, '--- CONTEXT ---')">Context</span>
-                        <span class="tag tag-preset" onclick="applyPreset(${index}, '--- SPECIFICATION ---')">Specification</span>
-                        <span class="tag tag-preset" onclick="applyPreset(${index}, '--- EXAMPLES ---')">Examples</span>
-                        <span class="tag tag-preset" onclick="applyPreset(${index}, '--- FILE: {{name}} ---')">File</span>
+                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- INSTRUCTION ---')">Instruction</span>
+                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- CONTEXT ---')">Context</span>
+                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- SPECIFICATION ---')">Specification</span>
+                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- EXAMPLES ---')">Examples</span>
+                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- FILE: {{name}} ---')">File</span>
                     </div>
                 </div>
             </div>
         `;
     });
     DOM.blocksContainer.innerHTML = htmlStr;
+    initSortable();
     generateOutput();
 }
 
 // 应用快捷预设标签
-window.applyPreset = function(index, text) {
-    document.getElementById(`custom-tpl-${index}`).value = text;
-    updateBlockConfig(index, 'customTpl', text);
+window.applyPreset = function(id, text) {
+    document.getElementById(`custom-tpl-${id}`).value = text;
+    updateBlockConfig(id, 'customTpl', text);
 };
-
-// ---------------- 丝滑拖拽排序逻辑 ----------------
-
-window.handleDragStart = function(index, e) {
-    draggedIndex = index;
-    draggedElement = e.currentTarget;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index); 
-    
-    // 使用 setTimeout 将原始元素脱离文档流，并在其原本位置直接插入虚位
-    setTimeout(() => {
-        draggedElement.parentNode.insertBefore(placeholder, draggedElement);
-        draggedElement.classList.add('dragging');
-    }, 0);
-};
-
-window.handleDragOver = function(e) {
-    e.preventDefault(); 
-    const targetBlock = e.target.closest('.block'); // 确保能捕获到外层 block
-    // 忽略自身、未捕获到的目标，或者当前悬停在虚位上
-    if (!targetBlock || targetBlock === draggedElement || targetBlock === placeholder) return;
-    
-    const bounding = targetBlock.getBoundingClientRect();
-    const offset = bounding.y + (bounding.height / 2);
-    
-    // 根据鼠标在目标块的上/下半部分决定插入位置
-    if (e.clientY - offset > 0) {
-        targetBlock.parentNode.insertBefore(placeholder, targetBlock.nextSibling);
-    } else {
-        targetBlock.parentNode.insertBefore(placeholder, targetBlock);
-    }
-};
-
-window.handleDrop = function(e) {
-    e.preventDefault();
-    if (draggedIndex === null) return;
-    
-    // 获取虚位在当前容器中的真实索引（排除掉高度为0的隐藏元素）
-    const children = Array.from(DOM.blocksContainer.children).filter(c => c !== draggedElement);
-    let newIndex = children.indexOf(placeholder);
-    
-    if (newIndex !== -1 && newIndex !== draggedIndex) {
-        const item = blocks.splice(draggedIndex, 1)[0];
-        blocks.splice(newIndex, 0, item);
-    }
-    
-    cleanupDrag();
-    renderBlocks();
-};
-
-window.handleDragEnd = function(e) {
-    cleanupDrag();
-};
-
-function cleanupDrag() {
-    if (draggedElement) draggedElement.classList.remove('dragging');
-    if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
-    draggedIndex = null;
-    draggedElement = null;
-}
 
 // ---------------- 核心与其他逻辑 ----------------
 
-window.toggleSettings = function(i) {
-    document.getElementById(`settings-${i}`).classList.toggle('active');
+window.toggleSettings = function(id) {
+    document.getElementById(`settings-${id}`).classList.toggle('active');
 };
 
-window.updateBlockConfig = function(i, k, v) {
-    blocks[i][k] = v;
-    debouncedGenerate();
+window.updateBlockConfig = function(id, k, v) {
+    const block = blocks.find(b => b.id === id);
+    if (block) {
+        block[k] = v;
+        debouncedGenerate();
+    }
 };
 
-window.removeBlock = function(i) {
-    blocks.splice(i, 1);
+window.removeBlock = function(id) {
+    blocks = blocks.filter(b => b.id !== id);
     renderBlocks();
     showToast("代码块已移除", true);
 };
