@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromptBlocks | A minimalist prompt assembler</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="./css/styles.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.14/dist/index.min.js" defer></script>
+    <script src="./js/app.js" defer></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="main-grid">
+        <div class="panel config-panel">
+            <div class="panel-title">GLOBAL SETTINGS <span>(全局配置)</span></div>
+            <div class="switch-group">
+                <label class="switch"><input type="checkbox" id="use-global-start" checked><span class="slider"></span></label>
+                <span style="font-size: 13px;">启用全局起始符</span>
+            </div>
+            <input type="text" id="cfg-start" value="=== PROMPT START ===">
+            
+            <div class="switch-group" style="margin-top: 15px;">
+                <label class="switch"><input type="checkbox" id="use-global-end" checked><span class="slider"></span></label>
+                <span style="font-size: 13px;">启用全局结束符</span>
+            </div>
+            <input type="text" id="cfg-end" value="=== PROMPT END ===">
+            
+            <div class="divider"></div>
+            
+            <div class="panel-title">TEMPLATE SETTINGS <span>(默认模板)</span></div>
+            <label class="config-label">文件块 (File Block)</label>
+            <input type="text" id="cfg-file-tpl" value="--- FILE: {{name}} ---">
+            <label class="config-label">提示词块 (Instruction Block)</label>
+            <input type="text" id="cfg-prompt-tpl" value="--- INSTRUCTION ---">
+
+            <div class="divider"></div>
+            
+            <div id="file-drop-zone" class="drop-zone">
+                <div style="font-size: 24px; margin-bottom: 8px; color: var(--secondary);">📥</div>
+                <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 12px;">将文件拖拽到此处，或点击下方导入</p>
+                <div class="btn btn-secondary" style="width:100%; text-align:center" id="btn-import-file">📁 浏览本地文件</div>
+                <input type="file" id="file-input" multiple style="display:none">
+            </div>
+        </div>
+
+        <div>
+            <div class="panel">
+                <div class="panel-title">QUICK INPUT <span>(快捷输入)</span></div>
+                <textarea id="prompt-input" style="height: 100px;" placeholder="在此输入你的指令、要求或上下文..."></textarea>
+                <button class="btn btn-primary" style="margin-top: 10px; width: 100%;" id="btn-add-block">➕ 添加为代码块</button>
+            </div>
+            <div id="blocks-container"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                OUTPUT PREVIEW <span>(最终结果)</span>
+                <span id="token-display" class="token-counter">Tokens: 0</span>
+            </div>
+            <textarea id="output-area" class="output-area" readonly placeholder="配置或添加内容后，这里将生成最终的 Prompt..."></textarea>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn btn-primary" style="flex: 1;" id="btn-copy">📋 复制</button>
+                <button class="btn btn-primary" style="background: var(--accent); color: #000; flex: 1;" id="btn-export">💾 导出文件</button>
+                <button class="btn btn-secondary" id="btn-clear">🗑️ 清空</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast">操作成功</div>
+
+</body>
+</html>
