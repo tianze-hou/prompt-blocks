@@ -1,4 +1,13 @@
-.sisyphus/
+# Ignore all dot folders and dot files
+.*/
+
+# Except .gitignore (keep this file)
+!.gitignore
+
+# Ignore .um~ files
+*.um~
+
+# Ignore common temp files
 node_modules/
 .DS_Store
 Thumbs.db
