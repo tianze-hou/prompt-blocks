@@ -10,7 +10,6 @@
     
     <link rel="stylesheet" href="./css/styles.css">
     
-    <script src="https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.14/dist/index.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
     <script src="./js/app.js" defer></script>
 </head>
@@ -19,7 +18,10 @@
 <div class="container">
     <div class="main-grid">
         <div class="panel config-panel">
-            <div class="panel-title">GLOBAL SETTINGS <span>(全局配置)</span></div>
+            <div class="panel-title">
+                GLOBAL SETTINGS <span>(全局配置)</span>
+                <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="App.openSettings()">⚙️ 设置</button>
+            </div>
             <div class="switch-group">
                 <label class="switch"><input type="checkbox" id="use-global-start" checked><span class="slider"></span></label>
                 <span style="font-size: 13px;">启用全局起始符</span>
@@ -42,21 +44,38 @@
 
             <div class="divider"></div>
             
+            <div class="panel-title" style="margin-bottom: 12px;">APPEARANCE <span>(外观)</span></div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 13px; color: var(--text-secondary);">☀️</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle" onchange="App.setTheme(this.checked)">
+                    <span class="slider"></span>
+                </label>
+                <span style="font-size: 13px; color: var(--text-secondary);">🌙</span>
+            </div>
+            
+            <div class="divider"></div>
+            
             <div id="file-drop-zone" class="drop-zone">
                 <div style="font-size: 24px; margin-bottom: 8px; color: var(--secondary);">📥</div>
                 <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 12px;">将文件拖拽到此处，或点击下方导入</p>
                 <div class="btn btn-secondary" style="width:100%; text-align:center" id="btn-import-file">📁 浏览本地文件</div>
-                <input type="file" id="file-input" multiple style="display:none">
+                <input type="file" id="file-input" multiple webkitdirectory style="display:none">
             </div>
         </div>
 
-        <div>
-            <div class="panel">
-                <div class="panel-title">QUICK INPUT <span>(快捷输入)</span></div>
-                <textarea id="prompt-input" style="height: 100px;" placeholder="在此输入你的指令、要求或上下文..."></textarea>
-                <button class="btn btn-primary" style="margin-top: 10px; width: 100%;" id="btn-add-block">➕ 添加为代码块</button>
+        <div class="panel input-panel">
+            <div class="panel-title">INPUT <span>(输入)</span></div>
+            <div class="input-section">
+                <div class="input-label">快捷输入</div>
+                <textarea id="prompt-input" placeholder="在此输入你的指令、要求或上下文..."></textarea>
+                <button class="btn btn-primary" id="btn-add-block">➕ 添加为代码块</button>
             </div>
-            <div id="blocks-container"></div>
+            <div class="input-divider"></div>
+            <div class="blocks-section">
+                <div class="input-label">代码块 <span class="block-count" id="block-count">0</span></div>
+                <div id="blocks-container" class="blocks-container"></div>
+            </div>
         </div>
 
         <div class="panel">
@@ -65,11 +84,81 @@
                 <span id="token-display" class="token-counter">Tokens: 0</span>
             </div>
             <textarea id="output-area" class="output-area" readonly placeholder="配置或添加内容后，这里将生成最终的 Prompt..."></textarea>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="btn btn-primary" style="flex: 1;" id="btn-copy">📋 复制</button>
-                <button class="btn btn-primary" style="background: var(--accent); color: #000; flex: 1;" id="btn-export">💾 导出文件</button>
-                <button class="btn btn-secondary" id="btn-clear">🗑️ 清空</button>
+            <div class="action-bar">
+                <div class="action-group">
+                    <button class="btn btn-icon" id="btn-undo" onclick="App.undo()" disabled title="撤销 (Ctrl+Z)">↩️</button>
+                    <button class="btn btn-icon" id="btn-redo" onclick="App.redo()" disabled title="重做 (Ctrl+Y)">↪️</button>
+                </div>
+                <div class="action-divider"></div>
+                <button class="btn btn-primary" id="btn-copy">📋 复制结果</button>
+                <button class="btn btn-secondary" id="btn-export">💾 导出</button>
+                <button class="btn btn-secondary" id="btn-import-project">📂 导入</button>
+                <button class="btn btn-danger-ghost" id="btn-clear">🗑️ 清空</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="settings-modal" class="modal">
+    <div class="modal-overlay" onclick="App.closeSettings()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>⚙️ 设置</h2>
+            <button class="modal-close" onclick="App.closeSettings()">✕</button>
+        </div>
+        <div class="modal-tabs">
+            <button class="modal-tab active" onclick="App.switchTab('general')">通用设置</button>
+            <button class="modal-tab" onclick="App.switchTab('presets')">自定义模板</button>
+        </div>
+        <div class="modal-body">
+            <!-- General Tab -->
+            <div id="tab-general" class="tab-content active">
+                <div class="settings-group">
+                    <h3>性能</h3>
+                    <label class="config-label">自动保存延迟</label>
+                    <p class="config-hint">输入内容变化后，等待多久更新预览和保存。值越小响应越快，但可能影响性能。</p>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="range" id="cfg-autosave-interval" min="100" max="1000" step="50" value="300" style="flex:1;">
+                        <span id="cfg-autosave-interval-display" style="min-width: 60px; text-align: right;">300ms</span>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h3>界面显示</h3>
+                    <div class="switch-group">
+                        <label class="switch">
+                            <input type="checkbox" id="cfg-show-token-count">
+                            <span class="slider"></span>
+                        </label>
+                        <div>
+                            <span style="font-size: 13px;">显示 Token 计数</span>
+                            <p class="config-hint">在顶部预览区显示预估的 Token 数量</p>
+                        </div>
+                    </div>
+                    <div class="switch-group">
+                        <label class="switch">
+                            <input type="checkbox" id="cfg-confirm-clear">
+                            <span class="slider"></span>
+                        </label>
+                        <div>
+                            <span style="font-size: 13px;">清空前确认</span>
+                            <p class="config-hint">点击清空按钮时显示确认对话框，防止误操作</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Presets Tab -->
+            <div id="tab-presets" class="tab-content">
+                <div class="settings-group">
+                    <h3>快捷预设模板</h3>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">点击标签即可应用预设到当前代码块</p>
+                    <div id="preset-list" class="preset-list"></div>
+                    <button class="btn btn-secondary" style="margin-top: 12px; width: 100%;" onclick="App.addCustomPreset()">➕ 添加自定义模板</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="App.closeSettings()">取消</button>
+            <button class="btn btn-primary" onclick="App.saveSettings()">💾 保存</button>
         </div>
     </div>
 </div>

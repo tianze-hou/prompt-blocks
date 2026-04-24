@@ -4,6 +4,9 @@
 # Except .gitignore (keep this file)
 !.gitignore
 
+# Ignore specific dot directories
+.sisyphus/
+
 # Ignore .um~ files
 *.um~
 

@@ -1,0 +1,9 @@
+[2026-04-24T21:01:44.301Z] ℹ️  🧩 [INFO] [Plugin] bridge entry initializing logFile=D:\local_repositories\github\prompt-blocks\logs\bridge.log pid=270740 instance=270740-g7f6j0tt
+[2026-04-24T21:01:48.419Z] ℹ️  📁 [INFO] [FileStore] using default store dir: D:\local_repositories\github\prompt-blocks\bridge_files
+[2026-04-24T21:01:48.448Z] ℹ️  🧩 [INFO] [Plugin] started adapter=lark-bridge
+[2026-04-24T21:01:48.449Z] ℹ️  🎧 [INFO] [Listener] starting global event subscription (MUX)
+[2026-04-24T21:01:48.451Z] ℹ️  🧩 [INFO] [Plugin] BridgePlugin ready
+[2026-04-24T21:01:48.452Z] ℹ️  🎧 [INFO] [Listener] connected to OpenCode event stream
+[2026-04-24T21:01:48.453Z] ℹ️  🎧 [INFO] [Listener] connected to OpenCode global event stream
+[2026-04-24T21:01:48.574Z] ℹ️  🔹 [INFO] ✅ Feishu Webhook Server listening on port 3000
+[2026-04-24T21:01:48.575Z] ℹ️  🪶 [INFO] [Feishu] Callback URL: http://127.0.0.1:3000
