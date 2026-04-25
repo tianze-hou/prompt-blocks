@@ -358,18 +358,18 @@ function renderBlocks() {
                 <div class="block-settings" id="settings-${block.id}">
                     <div class="block-setting-row">
                         <label class="switch">
-                            <input type="checkbox" ${block.showTitle ? 'checked' : ''} onchange="updateBlockConfig('${block.id}', 'showTitle', this.checked)">
+                            <input type="checkbox" ${block.showTitle ? 'checked' : ''} onchange="App.updateBlockConfig('${block.id}', 'showTitle', this.checked)">
                             <span class="slider"></span>
                         </label>
                         <span class="block-setting-label">显示标题</span>
                     </div>
-                    <input type="text" class="block-template-input" id="custom-tpl-${block.id}" value="${safeCustomTpl}" placeholder="覆盖默认模板..." oninput="updateBlockConfig('${block.id}', 'customTpl', this.value)">
+                    <input type="text" class="block-template-input" id="custom-tpl-${block.id}" value="${safeCustomTpl}" placeholder="覆盖默认模板..." oninput="App.updateBlockConfig('${block.id}', 'customTpl', this.value)">
                     <div class="preset-tags">
                         <span class="preset-label">快捷预设:</span>
-                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- INSTRUCTION ---')">Instruction</span>
-                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- CONTEXT ---')">Context</span>
-                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- SPECIFICATION ---')">Spec</span>
-                        <span class="tag tag-preset" onclick="applyPreset('${block.id}', '--- FILE: {{name}} ---')">File</span>
+                        <span class="tag tag-preset" onclick="App.applyPreset('${block.id}', '--- INSTRUCTION ---')">Instruction</span>
+                        <span class="tag tag-preset" onclick="App.applyPreset('${block.id}', '--- CONTEXT ---')">Context</span>
+                        <span class="tag tag-preset" onclick="App.applyPreset('${block.id}', '--- SPECIFICATION ---')">Spec</span>
+                        <span class="tag tag-preset" onclick="App.applyPreset('${block.id}', '--- FILE: {{name}} ---')">File</span>
                     </div>
                 </div>
             </div>
