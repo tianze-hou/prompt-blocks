@@ -1,1 +1,0 @@
-{"version": 1, "exportedAt": "2025-01-01T00:00:00.000Z", "blocks": [{"id": "test1", "type": "prompt", "name": "Imported Block", "content": "Test content", "showTitle": true, "customTpl": ""}], "config": {"useGlobalStart": true, "startText": "=== START ===", "useGlobalEnd": true, "endText": "=== END ===", "fileTpl": "--- FILE: {{name}} ---", "promptTpl": "--- INSTRUCTION ---"}}

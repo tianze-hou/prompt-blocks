@@ -6,6 +6,7 @@
 
 # Ignore specific dot directories
 .sisyphus/
+.test/
 
 # Ignore .um~ files
 *.um~
