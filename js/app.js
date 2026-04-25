@@ -29,6 +29,7 @@ const App = (function () {
             promptInput: document.getElementById('prompt-input'),
             toast: document.getElementById('toast'),
             fileInput: document.getElementById('file-input'),
+            dirInput: document.getElementById('dir-input'),
             dropZone: document.getElementById('file-drop-zone'),
             config: {
                 globalStart: document.getElementById('use-global-start'),
@@ -173,6 +174,14 @@ const App = (function () {
 
         // 点击上传
         DOM.fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) processFiles(Array.from(e.target.files));
+            e.target.value = '';
+        });
+
+        // Directory picker
+        document.getElementById('btn-import-dir').addEventListener('click', () => DOM.dirInput.click());
+
+        DOM.dirInput.addEventListener('change', (e) => {
             if (e.target.files.length) processFiles(Array.from(e.target.files));
             e.target.value = '';
         });
