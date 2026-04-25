@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     
     <link rel="stylesheet" href="./css/styles.css">
     
@@ -19,8 +20,8 @@
     <div class="main-grid">
         <div class="panel config-panel">
             <div class="panel-title">
-                GLOBAL SETTINGS <span>(全局配置)</span>
-                <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="App.openSettings()">⚙️ 设置</button>
+                GLOBAL SETTINGS <span class="subtitle">(全局配置)</span>
+                <button class="btn btn-secondary btn-sm" onclick="App.openSettings()"><i data-lucide="settings"></i> 设置</button>
             </div>
             <div class="switch-group">
                 <label class="switch"><input type="checkbox" id="use-global-start" checked><span class="slider"></span></label>
@@ -44,34 +45,34 @@
 
             <div class="divider"></div>
             
-            <div class="panel-title" style="margin-bottom: 12px;">APPEARANCE <span>(外观)</span></div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 13px; color: var(--text-secondary);">☀️</span>
+            <div class="panel-title" style="margin-bottom: 12px;">APPEARANCE <span class="subtitle">(外观)</span></div>
+            <div class="theme-toggle-wrapper">
+                <i data-lucide="sun" class="theme-icon"></i>
                 <label class="switch">
                     <input type="checkbox" id="theme-toggle" onchange="App.setTheme(this.checked)">
                     <span class="slider"></span>
                 </label>
-                <span style="font-size: 13px; color: var(--text-secondary);">🌙</span>
+                <i data-lucide="moon" class="theme-icon"></i>
             </div>
             
             <div class="divider"></div>
             
             <div id="file-drop-zone" class="drop-zone">
-                <div style="font-size: 24px; margin-bottom: 8px; color: var(--secondary);">📥</div>
-                <p style="margin-bottom: 12px; color: var(--text-secondary); font-size: 12px;">将文件拖拽到此处，或点击下方导入</p>
-                <div class="btn btn-secondary" style="width:100%; text-align:center" id="btn-import-file">📁 浏览本地文件</div>
+                <div class="drop-zone-icon"><i data-lucide="file-down"></i></div>
+                <p class="drop-zone-text">将文件拖拽到此处，或点击下方导入</p>
+                <div class="btn btn-secondary" style="width:100%;" id="btn-import-file"><i data-lucide="folder-open"></i> 浏览本地文件</div>
                 <input type="file" id="file-input" multiple style="display:none">
-                <div class="btn btn-secondary" style="width:100%; text-align:center" id="btn-import-dir">📂 选择目录</div>
+                <div class="btn btn-secondary" style="width:100%;" id="btn-import-dir"><i data-lucide="folder-search"></i> 选择目录</div>
                 <input type="file" id="dir-input" multiple webkitdirectory style="display:none">
             </div>
         </div>
 
         <div class="panel input-panel">
-            <div class="panel-title">INPUT <span>(输入)</span></div>
+            <div class="panel-title">INPUT <span class="subtitle">(输入)</span></div>
             <div class="input-section">
                 <div class="input-label">快捷输入</div>
                 <textarea id="prompt-input" placeholder="在此输入你的指令、要求或上下文..."></textarea>
-                <button class="btn btn-primary" id="btn-add-block">➕ 添加为代码块</button>
+                <button class="btn btn-primary" id="btn-add-block"><i data-lucide="plus"></i> 添加为代码块</button>
             </div>
             <div class="input-divider"></div>
             <div class="blocks-section">
@@ -82,20 +83,20 @@
 
         <div class="panel">
             <div class="panel-title">
-                OUTPUT PREVIEW <span>(最终结果)</span>
-                <span id="token-display" class="token-counter">Tokens: 0</span>
+                OUTPUT PREVIEW <span class="subtitle">(最终结果)</span>
+                <span id="token-display" class="token-counter"><i data-lucide="hash"></i> Tokens: 0</span>
             </div>
             <textarea id="output-area" class="output-area" readonly placeholder="配置或添加内容后，这里将生成最终的 Prompt..."></textarea>
             <div class="action-bar">
                 <div class="action-group">
-                    <button class="btn btn-icon" id="btn-undo" onclick="App.undo()" disabled title="撤销 (Ctrl+Z)">↩️</button>
-                    <button class="btn btn-icon" id="btn-redo" onclick="App.redo()" disabled title="重做 (Ctrl+Y)">↪️</button>
+                    <button class="btn btn-icon btn-secondary" id="btn-undo" onclick="App.undo()" disabled title="撤销 (Ctrl+Z)"><i data-lucide="undo-2"></i></button>
+                    <button class="btn btn-icon btn-secondary" id="btn-redo" onclick="App.redo()" disabled title="重做 (Ctrl+Y)"><i data-lucide="redo-2"></i></button>
                 </div>
                 <div class="action-divider"></div>
-                <button class="btn btn-primary" id="btn-copy">📋 复制结果</button>
-                <button class="btn btn-secondary" id="btn-export">💾 导出</button>
-                <button class="btn btn-secondary" id="btn-import-project">📂 导入</button>
-                <button class="btn btn-danger-ghost" id="btn-clear">🗑️ 清空</button>
+                <button class="btn btn-primary" id="btn-copy"><i data-lucide="copy"></i> 复制结果</button>
+                <button class="btn btn-secondary" id="btn-export"><i data-lucide="download"></i> 导出</button>
+                <button class="btn btn-secondary" id="btn-import-project"><i data-lucide="upload"></i> 导入</button>
+                <button class="btn btn-danger-ghost" id="btn-clear"><i data-lucide="trash-2"></i> 清空</button>
             </div>
         </div>
     </div>
@@ -105,12 +106,12 @@
     <div class="modal-overlay" onclick="App.closeSettings()"></div>
     <div class="modal-content">
         <div class="modal-header">
-            <h2>⚙️ 设置</h2>
-            <button class="modal-close" onclick="App.closeSettings()">✕</button>
+            <h2><i data-lucide="settings"></i> 设置</h2>
+            <button class="modal-close" onclick="App.closeSettings()"><i data-lucide="x"></i></button>
         </div>
         <div class="modal-tabs">
-            <button class="modal-tab active" onclick="App.switchTab('general')">通用设置</button>
-            <button class="modal-tab" onclick="App.switchTab('presets')">自定义模板</button>
+            <button class="modal-tab active" onclick="App.switchTab('general')"><i data-lucide="sliders-horizontal"></i> 通用设置</button>
+            <button class="modal-tab" onclick="App.switchTab('presets')"><i data-lucide="layout-template"></i> 自定义模板</button>
         </div>
         <div class="modal-body">
             <!-- General Tab -->
@@ -154,13 +155,13 @@
                     <h3>快捷预设模板</h3>
                     <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">点击标签即可应用预设到当前代码块</p>
                     <div id="preset-list" class="preset-list"></div>
-                    <button class="btn btn-secondary" style="margin-top: 12px; width: 100%;" onclick="App.addCustomPreset()">➕ 添加自定义模板</button>
+                    <button class="btn btn-secondary" style="margin-top: 12px; width: 100%;" onclick="App.addCustomPreset()"><i data-lucide="plus"></i> 添加自定义模板</button>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="App.closeSettings()">取消</button>
-            <button class="btn btn-primary" onclick="App.saveSettings()">💾 保存</button>
+            <button class="btn btn-primary" onclick="App.saveSettings()"><i data-lucide="save"></i> 保存</button>
         </div>
     </div>
 </div>

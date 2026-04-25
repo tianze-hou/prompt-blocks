@@ -45,12 +45,13 @@ const App = (function () {
     // 初始化逻辑
     document.addEventListener('DOMContentLoaded', () => {
         initDOM();
-        loadSettings(); // 加载设置
+        loadSettings();
         loadTheme();
         loadFromLocal();
         bindEvents();
         renderBlocks();
-        updateUndoRedoButtons(); // Initialize button states
+        updateUndoRedoButtons();
+        lucide.createIcons();
     });
 
     // ---------------- 主题切换 ----------------
@@ -335,7 +336,7 @@ function renderBlocks() {
     if (blocks.length === 0) {
         DOM.blocksContainer.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state-icon">📦</div>
+                <div class="empty-state-icon"><i data-lucide="package"></i></div>
                 <div class="empty-state-text">暂无代码块</div>
                 <div class="empty-state-hint">在上方输入内容或拖拽文件来添加</div>
             </div>
@@ -354,15 +355,15 @@ function renderBlocks() {
         htmlStr += `
             <div class="block" data-id="${block.id}">
                 <div class="block-header-ui">
-                    <div class="drag-handle" title="拖拽排序">⠿</div>
+                    <div class="drag-handle" title="拖拽排序"><i data-lucide="grip-vertical"></i></div>
                     <div class="block-info">
                         <div class="block-meta">
                             <span class="tag ${block.type === 'file' ? 'tag-file' : 'tag-prompt'}">${block.type}</span>
                             <span class="block-name">${safeName}</span>
                         </div>
                     </div>
-                    <button class="btn btn-icon btn-secondary" onclick="App.toggleSettings('${block.id}')" title="设置">⚙️</button>
-                    <button class="btn btn-icon btn-danger-ghost" onclick="App.removeBlock('${block.id}')" title="删除">✕</button>
+                    <button class="btn btn-icon btn-secondary" onclick="App.toggleSettings('${block.id}')" title="设置"><i data-lucide="settings"></i></button>
+                    <button class="btn btn-icon btn-danger-ghost" onclick="App.removeBlock('${block.id}')" title="删除"><i data-lucide="x"></i></button>
                 </div>
                 <div class="block-settings" id="settings-${block.id}">
                     <div class="block-setting-row">
@@ -387,6 +388,7 @@ function renderBlocks() {
     DOM.blocksContainer.innerHTML = htmlStr;
     initSortable();
     generateOutput();
+    lucide.createIcons();
 }
 
 // 应用快捷预设标签
@@ -737,7 +739,7 @@ function toggleSettings(id) {
                            onchange="App.updateCustomPreset(${p.index}, 'name', this.value)">
                 `}
                 ${!p.isDefault ? `
-                    <button class="preset-delete" onclick="App.deleteCustomPreset(${p.index})">✕</button>
+                    <button class="preset-delete" onclick="App.deleteCustomPreset(${p.index})"><i data-lucide="trash-2"></i></button>
                 ` : '<span style="width: 28px;"></span>'}
             </div>
         `).join('');
@@ -768,6 +770,7 @@ function toggleSettings(id) {
         document.querySelector(`.modal-tab[onclick="App.switchTab('${tabName}')"]`).classList.add('active');
         document.getElementById(`tab-${tabName}`).classList.add('active');
         if (tabName === 'presets') renderPresetList();
+        lucide.createIcons();
     }
 
     // ---------------- Settings Modal ----------------
