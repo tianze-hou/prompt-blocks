@@ -20,7 +20,9 @@
 <div class="container">
     <div class="main-grid">
         <div class="panel config-panel">
-            <div class="panel-title">GLOBAL SETTINGS <span class="subtitle">(全局配置)</span></div>
+            <div class="panel-title">GLOBAL SETTINGS <span class="subtitle">(全局配置)</span>
+                <button class="btn btn-secondary btn-sm" onclick="App.openSettings()"><i data-lucide="settings"></i> 设置</button>
+            </div>
 
             <div id="file-drop-zone" class="drop-zone">
                 <div class="drop-zone-icon"><i data-lucide="file-down"></i></div>
@@ -68,8 +70,8 @@
             </div>
         </div>
 
-        <div class="panel">
-            <div class="panel-title">
+            <div class="panel output-panel">
+                <div class="panel-title">
                 OUTPUT PREVIEW <span class="subtitle">(最终结果)</span>
                 <span id="token-display" class="token-counter"><i data-lucide="hash"></i> Tokens: 0</span>
             </div>
