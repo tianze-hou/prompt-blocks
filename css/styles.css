@@ -33,12 +33,12 @@ body {
     font-family: "DM Sans", system-ui, -apple-system, sans-serif;
     background: var(--bg);
     color: var(--text-primary);
-    height: 100vh;
+    min-height: 100vh;
     padding: 24px;
     font-size: 14px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 .container {
@@ -50,11 +50,11 @@ body {
 }
 
 .main-grid {
-    display: flex;
+    display: grid;
+    grid-template-columns: 320px 1fr 1fr;
     gap: var(--space-24);
     align-items: stretch;
-    flex: 1;
-    min-height: 0;
+    height: calc(100vh - 48px);
 }
 
 .panel {
@@ -67,7 +67,6 @@ body {
     flex-direction: column;
     min-height: 0;
     overflow-y: auto;
-    flex: 1;
 }
 
 .panel.input-panel {
@@ -129,36 +128,27 @@ body {
 
 @media (max-width: 1200px) {
     .main-grid {
-        flex-wrap: nowrap;
-    }
-    .panel {
-        flex: 1 1 300px;
+        grid-template-columns: 300px 1fr 1fr;
     }
 }
 
 @media (max-width: 1024px) {
     .main-grid {
-        flex-wrap: wrap;
-        gap: var(--space-20);
+        grid-template-columns: 1fr 1fr;
+        height: auto;
     }
     .config-panel {
-        flex: 1 1 100%;
-    }
-    .panel {
-        flex: 1 1 300px;
+        grid-column: span 2;
     }
 }
 
 @media (max-width: 768px) {
     .main-grid {
-        flex-direction: column;
+        grid-template-columns: 1fr;
         gap: var(--space-16);
     }
-    .panel {
-        flex: none;
-    }
-    body {
-        padding: 16px;
+    .config-panel {
+        grid-column: span 1;
     }
 }
 
