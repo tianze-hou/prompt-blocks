@@ -3,6 +3,7 @@ const App = (function () {
 // 状态管理
     let blocks = [];
     let sortableInstance = null; // SortableJS 实例
+    let tiktokenEncoding = null; // js-tiktoken 编码器实例
 
     // 历史记录管理（撤销/重做）
     let undoStack = [];
@@ -20,6 +21,31 @@ const App = (function () {
 
     // DOM 元素缓存
     let DOM = {};
+
+    // 初始化 js-tiktoken 编码器
+    async function initTiktoken() {
+        if (typeof Tiktoken === 'undefined') {
+            console.warn('Tiktoken not loaded, using fallback estimation');
+            return;
+        }
+        try {
+            const cl100kBase = await import('https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.14/dist/ranks/cl100k_base.js');
+            tiktokenEncoding = new Tiktoken(
+                cl100kBase.bpe_ranks,
+                cl100kBase.special_tokens,
+                cl100kBase.pat_str
+            );
+        } catch (e) {
+            console.warn('Failed to initialize Tiktoken:', e);
+        }
+    }
+
+    // 页面卸载时释放编码器
+    window.addEventListener('unload', () => {
+        if (tiktokenEncoding) {
+            tiktokenEncoding.free();
+        }
+    });
 
     function initDOM() {
         DOM = {
@@ -43,7 +69,7 @@ const App = (function () {
     }
 
     // 初始化逻辑
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         initDOM();
         loadSettings();
         loadTheme();
@@ -52,6 +78,7 @@ const App = (function () {
         renderBlocks();
         updateUndoRedoButtons();
         lucide.createIcons();
+        await initTiktoken();
     });
 
     // ---------------- 主题切换 ----------------
@@ -75,11 +102,22 @@ const App = (function () {
     }
 
     // ---------------- 估计Token数 ----------------
-    // 使用基于字符的估算，无需外部依赖
-    // cl100k_base编码：英文约4字符/token，中文约1.5字符/token
+    // 使用 js-tiktoken 的 cl100k_base 编码精确计算
     function estimateTokens(text) {
         if (!text) return 0;
-        
+
+        // 如果 tiktoken 编码器已初始化，使用精确计数
+        if (tiktokenEncoding) {
+            try {
+                const encoded = tiktokenEncoding.encode(text);
+                return encoded.length;
+            } catch (e) {
+                console.warn('Tiktoken encoding failed, using fallback:', e);
+            }
+        }
+
+        // Fallback: 基于字符的估算
+        // cl100k_base编码：英文约4字符/token，中文约1.5字符/token
         let tokens = 0;
         const words = text.split(/\s+/);
         for (const word of words) {
@@ -91,11 +129,11 @@ const App = (function () {
                 tokens += Math.ceil(word.length / 1.5);
             }
         }
-        
+
         // 空格/换行符额外估算
         const whitespaces = (text.match(/\s+/g) || []).length;
         tokens += whitespaces * 0.5;
-        
+
         return Math.max(1, Math.round(tokens));
     }
 
