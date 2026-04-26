@@ -459,9 +459,20 @@ function toggleSettings(id) {
     }
 
     function calculateTokens(text) {
-        if (!text) { if (settings.showTokenCount) DOM.tokenDisplay.innerText = "Tokens: 0"; return; }
+        if (!settings.showTokenCount) {
+            DOM.tokenDisplay.style.display = 'none';
+            return;
+        }
+
+        if (!text) {
+            DOM.tokenDisplay.style.display = '';
+            DOM.tokenDisplay.innerText = "Tokens: 0";
+            return;
+        }
+
         const estimated = estimateTokens(text);
-        if (settings.showTokenCount) DOM.tokenDisplay.innerText = `Tokens: ~${estimated.toLocaleString()}`;
+        DOM.tokenDisplay.style.display = '';
+        DOM.tokenDisplay.innerText = `Tokens: ~${estimated.toLocaleString()}`;
     }
 
     function copyToClipboard() {
@@ -697,6 +708,9 @@ function toggleSettings(id) {
 
         closeSettings();
         showToast('设置已保存');
+
+        // 触发重新计算 token
+        generateOutput();
     }
 
     function loadSettings() {
