@@ -192,11 +192,10 @@ body {
 .drop-zone {
     border: 2px dashed var(--border);
     border-radius: var(--radius);
-    padding: 24px 16px;
+    padding: 16px 12px;
     text-align: center;
     transition: all var(--transition);
     background: rgba(0, 0, 0, 0.15);
-    margin-top: 16px;
 }
 
 .drop-zone:hover {

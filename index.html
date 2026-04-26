@@ -20,44 +20,8 @@
 <div class="container">
     <div class="main-grid">
         <div class="panel config-panel">
-            <div class="panel-title">
-                GLOBAL SETTINGS <span class="subtitle">(全局配置)</span>
-                <button class="btn btn-secondary btn-sm" onclick="App.openSettings()"><i data-lucide="settings"></i> 设置</button>
-            </div>
-            <div class="switch-group">
-                <label class="switch"><input type="checkbox" id="use-global-start" checked><span class="slider"></span></label>
-                <span style="font-size: 13px;">启用全局起始符</span>
-            </div>
-            <input type="text" id="cfg-start" value="=== PROMPT START ===">
-            
-            <div class="switch-group">
-                <label class="switch"><input type="checkbox" id="use-global-end" checked><span class="slider"></span></label>
-                <span style="font-size: 13px;">启用全局结束符</span>
-            </div>
-            <input type="text" id="cfg-end" value="=== PROMPT END ===">
-            
-            <div class="divider"></div>
-            
-            <div class="panel-title">TEMPLATE SETTINGS <span>(默认模板)</span></div>
-            <label class="config-label">文件块 (File Block)</label>
-            <input type="text" id="cfg-file-tpl" value="--- FILE: {{name}} ---">
-            <label class="config-label">提示词块 (Instruction Block)</label>
-            <input type="text" id="cfg-prompt-tpl" value="--- INSTRUCTION ---">
+            <div class="panel-title">GLOBAL SETTINGS <span class="subtitle">(全局配置)</span></div>
 
-            <div class="divider"></div>
-            
-            <div class="panel-title" style="margin-bottom: 12px;">APPEARANCE <span class="subtitle">(外观)</span></div>
-            <div class="theme-toggle-wrapper">
-                <i data-lucide="sun" class="theme-icon"></i>
-                <label class="switch">
-                    <input type="checkbox" id="theme-toggle" onchange="App.setTheme(this.checked)">
-                    <span class="slider"></span>
-                </label>
-                <i data-lucide="moon" class="theme-icon"></i>
-            </div>
-            
-            <div class="divider"></div>
-            
             <div id="file-drop-zone" class="drop-zone">
                 <div class="drop-zone-icon"><i data-lucide="file-down"></i></div>
                 <p class="drop-zone-text">将文件拖拽到此处，或点击下方导入</p>
@@ -66,6 +30,28 @@
                 <div class="btn btn-secondary" style="width:100%;" id="btn-import-dir"><i data-lucide="folder-search"></i> 选择目录</div>
                 <input type="file" id="dir-input" multiple webkitdirectory style="display:none">
             </div>
+
+            <div class="divider"></div>
+
+            <div class="switch-group">
+                <label class="switch"><input type="checkbox" id="use-global-start" checked><span class="slider"></span></label>
+                <span style="font-size: 13px;">启用全局起始符</span>
+            </div>
+            <input type="text" id="cfg-start" value="=== PROMPT START ===">
+
+            <div class="switch-group">
+                <label class="switch"><input type="checkbox" id="use-global-end" checked><span class="slider"></span></label>
+                <span style="font-size: 13px;">启用全局结束符</span>
+            </div>
+            <input type="text" id="cfg-end" value="=== PROMPT END ===">
+
+            <div class="divider"></div>
+
+            <div class="panel-title">TEMPLATE SETTINGS <span>(默认模板)</span></div>
+            <label class="config-label">文件块 (File Block)</label>
+            <input type="text" id="cfg-file-tpl" value="--- FILE: {{name}} ---">
+            <label class="config-label">提示词块 (Instruction Block)</label>
+            <input type="text" id="cfg-prompt-tpl" value="--- INSTRUCTION ---">
         </div>
 
         <div class="panel input-panel">
@@ -146,6 +132,19 @@
                         <div>
                             <span style="font-size: 13px;">清空前确认</span>
                             <p class="config-hint">点击清空按钮时显示确认对话框，防止误操作</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h3>外观</h3>
+                    <div class="switch-group">
+                        <label class="switch">
+                            <input type="checkbox" id="cfg-dark-mode" onchange="App.setTheme(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                        <div>
+                            <span style="font-size: 13px;">深色模式</span>
+                            <p class="config-hint">切换深色/浅色主题</p>
                         </div>
                     </div>
                 </div>
