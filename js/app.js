@@ -1,9 +1,9 @@
 // app.js
 const App = (function () {
-// 状态管理
+    // 状态管理
     let blocks = [];
-    let sortableInstance = null; // SortableJS 实例
-    let tiktokenEncoding = null; // js-tiktoken 编码器实例
+    let sortableInstance = null;
+    let tiktokenEncoding = null;
 
     // 历史记录管理（撤销/重做）
     let undoStack = [];
@@ -18,9 +18,18 @@ const App = (function () {
         customPresets: []
     };
     let debouncedGenerate = null;
+    let debouncedSave = null;
 
     // DOM 元素缓存
     let DOM = {};
+
+    // 性能优化：缓存已渲染的 block id 集合，用于增量更新
+    let renderedBlockIds = new Set();
+    // 性能优化：使用 requestAnimationFrame 批量处理 DOM 更新
+    let pendingRaf = null;
+    // 性能优化：缓存 escapeHtml 结果
+    const escapeCache = new Map();
+    const ESCAPE_CACHE_MAX = 500;
 
     // 初始化 js-tiktoken 编码器
     async function initTiktoken() {
@@ -41,9 +50,10 @@ const App = (function () {
     }
 
     // 页面卸载时释放编码器
-    window.addEventListener('unload', () => {
+    window.addEventListener('beforeunload', () => {
         if (tiktokenEncoding) {
             tiktokenEncoding.free();
+            tiktokenEncoding = null;
         }
     });
 
@@ -88,7 +98,6 @@ const App = (function () {
         if (saved !== null) {
             isDark = saved === 'dark';
         } else {
-            // 尊重系统偏好
             isDark = !window.matchMedia('(prefers-color-scheme: light)').matches;
         }
         setTheme(isDark);
@@ -106,7 +115,6 @@ const App = (function () {
     function estimateTokens(text) {
         if (!text) return 0;
 
-        // 如果 tiktoken 编码器已初始化，使用精确计数
         if (tiktokenEncoding) {
             try {
                 const encoded = tiktokenEncoding.encode(text);
@@ -117,20 +125,16 @@ const App = (function () {
         }
 
         // Fallback: 基于字符的估算
-        // cl100k_base编码：英文约4字符/token，中文约1.5字符/token
         let tokens = 0;
         const words = text.split(/\s+/);
         for (const word of words) {
             if (/^[\x00-\x7F]+$/.test(word)) {
-                // 纯ASCII/英文 - 约4字符/token
                 tokens += Math.ceil(word.length / 4);
             } else {
-                // 包含非ASCII（中文等）- 约1.5字符/token
                 tokens += Math.ceil(word.length / 1.5);
             }
         }
 
-        // 空格/换行符额外估算
         const whitespaces = (text.match(/\s+/g) || []).length;
         tokens += whitespaces * 0.5;
 
@@ -144,7 +148,7 @@ const App = (function () {
         if (undoStack.length > MAX_HISTORY) {
             undoStack.shift();
         }
-        redoStack = []; // 新操作清空 redo 栈
+        redoStack = [];
         updateUndoRedoButtons();
     }
 
@@ -178,28 +182,24 @@ const App = (function () {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const ctrlKey = isMac ? e.metaKey : e.ctrlKey;
 
-        // Ctrl+S: 导出文件（阻止默认行为）
         if (ctrlKey && e.key === 's') {
             e.preventDefault();
             exportToFile();
             return;
         }
 
-        // Ctrl+Z: 撤销
         if (ctrlKey && e.key === 'z' && !e.shiftKey) {
             e.preventDefault();
             undo();
             return;
         }
 
-        // Ctrl+Y 或 Ctrl+Shift+Z: 重做
         if ((ctrlKey && e.key === 'y') || (ctrlKey && e.shiftKey && e.key === 'z')) {
             e.preventDefault();
             redo();
             return;
         }
 
-        // Ctrl+Enter: 添加当前输入为 block
         if (ctrlKey && e.key === 'Enter') {
             e.preventDefault();
             addPromptBlock();
@@ -211,13 +211,11 @@ const App = (function () {
         document.getElementById('btn-add-block').addEventListener('click', addPromptBlock);
         document.getElementById('btn-import-file').addEventListener('click', () => DOM.fileInput.click());
 
-        // 点击上传
         DOM.fileInput.addEventListener('change', (e) => {
             if (e.target.files.length) processFiles(Array.from(e.target.files));
             e.target.value = '';
         });
 
-        // Directory picker
         document.getElementById('btn-import-dir').addEventListener('click', () => DOM.dirInput.click());
 
         DOM.dirInput.addEventListener('change', (e) => {
@@ -253,24 +251,19 @@ const App = (function () {
             });
         });
 
-        // 绑定键盘快捷键
         document.addEventListener('keydown', handleKeyboardShortcuts);
     }
 
     function initSortable() {
-        if (sortableInstance) {
-            sortableInstance.destroy();
-        }
-        // 使用 SortableJS 实现丝滑拖拽
+        if (sortableInstance) return;
         sortableInstance = new Sortable(DOM.blocksContainer, {
             animation: 150,
-            handle: '.drag-handle', // 只有拖拽图标才能触发拖拽
-            ghostClass: 'sortable-ghost', // 拖拽时的虚影样式
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
             dragClass: 'sortable-drag',
             onEnd: function (evt) {
                 if (evt.oldIndex === evt.newIndex) return;
-                pushHistory(); // Record state after reorder
-                // 更新底层数据数组，保持与 DOM 一致
+                pushHistory();
                 const movedItem = blocks.splice(evt.oldIndex, 1)[0];
                 blocks.splice(evt.newIndex, 0, movedItem);
                 generateOutput();
@@ -278,7 +271,7 @@ const App = (function () {
         });
     }
 
-function addPromptBlock() {
+    function addPromptBlock() {
         const val = DOM.promptInput.value.trim();
         if (!val) return showToast("请输入内容后再添加", true);
 
@@ -297,25 +290,27 @@ function addPromptBlock() {
 
     function processFiles(files) {
         const textExts = ['.txt', '.md', '.js', '.ts', '.html', '.css', '.json', '.xml', '.yaml', '.yml', '.py', '.go', '.rs', '.java', '.c', '.cpp', '.h', '.sh', '.sql'];
+        const extSet = new Set(textExts);
         const isTextFile = (fname) => {
             const lower = fname.toLowerCase();
-            return textExts.some(ext => lower.endsWith(ext)) || lower.match(/\.(txt|md|js|ts|html|css|json|xml|yaml|yml|py|go|rs|java|c|cpp|h|sh|sql)$/i);
+            const dotIndex = lower.lastIndexOf('.');
+            if (dotIndex === -1) return false;
+            return extSet.has(lower.slice(dotIndex));
         };
 
         let loadedCount = 0;
         let errorCount = 0;
         let skipCount = 0;
+        const total = files.length;
+
         files.forEach(file => {
             if (!isTextFile(file.name)) {
                 skipCount++;
-                if (loadedCount + errorCount + skipCount === files.length) {
-                    finishImport();
-                }
+                if (loadedCount + errorCount + skipCount === total) finishImport();
                 return;
             }
             const reader = new FileReader();
             reader.onload = (ev) => {
-                pushHistory();
                 blocks.push({
                     id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
                     type: 'file',
@@ -325,15 +320,11 @@ function addPromptBlock() {
                     customTpl: ''
                 });
                 loadedCount++;
-                if (loadedCount + errorCount + skipCount === files.length) {
-                    finishImport();
-                }
+                if (loadedCount + errorCount + skipCount === total) finishImport();
             };
             reader.onerror = () => {
                 errorCount++;
-                if (loadedCount + errorCount + skipCount === files.length) {
-                    finishImport();
-                }
+                if (loadedCount + errorCount + skipCount === total) finishImport();
             };
             reader.readAsText(file);
         });
@@ -343,7 +334,7 @@ function addPromptBlock() {
                 showToast("没有可导入的文本文件", true);
                 return;
             }
-            pushHistory(); // Record state after files loaded
+            pushHistory();
             renderBlocks();
             if (errorCount > 0) {
                 showToast(`导入完成：${loadedCount} 成功，${errorCount} 失败${skipCount > 0 ? `，跳过 ${skipCount} 个非文本文件` : ''}`, true);
@@ -355,43 +346,101 @@ function addPromptBlock() {
         }
     }
 
-// HTML 转义函数 - 防止 XSS
-function escapeHtml(str) {
-    if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
+    // HTML 转义函数 - 防止 XSS，带缓存
+    function escapeHtml(str) {
+        if (!str) return '';
+        const cached = escapeCache.get(str);
+        if (cached !== undefined) return cached;
 
-function renderBlocks() {
-    // Update block count
-    const countEl = document.getElementById('block-count');
-    if (countEl) countEl.textContent = blocks.length;
+        const result = str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
 
-    if (blocks.length === 0) {
-        DOM.blocksContainer.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon"><i data-lucide="package"></i></div>
-                <div class="empty-state-text">暂无代码块</div>
-                <div class="empty-state-hint">在上方输入内容或拖拽文件来添加</div>
-            </div>
-        `;
-        initSortable();
-        generateOutput();
-        return;
+        if (escapeCache.size >= ESCAPE_CACHE_MAX) {
+            const firstKey = escapeCache.keys().next().value;
+            escapeCache.delete(firstKey);
+        }
+        escapeCache.set(str, result);
+        return result;
     }
 
-    let htmlStr = '';
-    // 注意：这里的操作全部改为基于 block.id，防止拖拽后索引错位
-    blocks.forEach((block) => {
-        // 安全转义用户数据
-        const safeName = escapeHtml(block.name);
-        const safeCustomTpl = escapeHtml(block.customTpl);
-        htmlStr += `
-            <div class="block" data-id="${block.id}">
+    // 性能优化：使用 DocumentFragment 批量插入
+    function renderBlocks() {
+        const countEl = document.getElementById('block-count');
+        if (countEl) countEl.textContent = blocks.length;
+
+        if (blocks.length === 0) {
+            DOM.blocksContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i data-lucide="package"></i></div>
+                    <div class="empty-state-text">暂无代码块</div>
+                    <div class="empty-state-hint">在上方输入内容或拖拽文件来添加</div>
+                </div>
+            `;
+            renderedBlockIds.clear();
+            if (sortableInstance) {
+                sortableInstance.destroy();
+                sortableInstance = null;
+            }
+            generateOutput();
+            lucide.createIcons();
+            return;
+        }
+
+        // 增量更新：检查哪些 block 需要新增/更新/删除
+        const currentIds = new Set(blocks.map(b => b.id));
+        const existingElements = Array.from(DOM.blocksContainer.children);
+        const existingIds = new Set();
+
+        // 移除已不存在的 DOM 元素
+        for (const el of existingElements) {
+            const id = el.getAttribute('data-id');
+            if (id) {
+                if (!currentIds.has(id)) {
+                    el.remove();
+                } else {
+                    existingIds.add(id);
+                }
+            } else if (!el.classList.contains('empty-state')) {
+                el.remove();
+            } else {
+                el.remove();
+            }
+        }
+
+        const fragment = document.createDocumentFragment();
+        const newBlockElements = [];
+
+        blocks.forEach((block) => {
+            if (existingIds.has(block.id)) {
+                // 已存在的 block，检查是否需要更新内容
+                const existingEl = DOM.blocksContainer.querySelector(`[data-id="${block.id}"]`);
+                if (existingEl) {
+                    const nameEl = existingEl.querySelector('.block-name');
+                    if (nameEl && nameEl.textContent !== block.name) {
+                        nameEl.textContent = block.name;
+                    }
+                    const tplInput = existingEl.querySelector('.block-template-input');
+                    if (tplInput && tplInput.value !== (block.customTpl || '')) {
+                        tplInput.value = block.customTpl || '';
+                    }
+                    const showTitleCheckbox = existingEl.querySelector('input[type="checkbox"]');
+                    if (showTitleCheckbox && showTitleCheckbox.checked !== block.showTitle) {
+                        showTitleCheckbox.checked = block.showTitle;
+                    }
+                }
+                return;
+            }
+
+            const safeName = escapeHtml(block.name);
+            const safeCustomTpl = escapeHtml(block.customTpl);
+            const div = document.createElement('div');
+            div.className = 'block';
+            div.setAttribute('data-id', block.id);
+            div.innerHTML = `
                 <div class="block-header-ui">
                     <div class="drag-handle" title="拖拽排序"><i data-lucide="grip-vertical"></i></div>
                     <div class="block-info">
@@ -420,25 +469,35 @@ function renderBlocks() {
                         <span class="tag tag-preset" onclick="App.applyPreset('${block.id}', '--- FILE: {{name}} ---')">File</span>
                     </div>
                 </div>
-            </div>
-        `;
-    });
-    DOM.blocksContainer.innerHTML = htmlStr;
-    initSortable();
-    generateOutput();
-    lucide.createIcons();
-}
+            `;
+            fragment.appendChild(div);
+            newBlockElements.push(div);
+        });
 
-// 应用快捷预设标签
-function applyPreset(id, text) {
-    document.getElementById(`custom-tpl-${id}`).value = text;
-    updateBlockConfig(id, 'customTpl', text);
-}
+        if (fragment.childNodes.length > 0) {
+            DOM.blocksContainer.appendChild(fragment);
+        }
 
-// ---------------- 核心与其他逻辑 ----------------
+        initSortable();
+        generateOutput();
 
-function toggleSettings(id) {
-        document.getElementById(`settings-${id}`).classList.toggle('active');
+        // 只渲染新增的图标
+        if (newBlockElements.length > 0) {
+            lucide.createIcons({ nodes: newBlockElements });
+        }
+    }
+
+    function applyPreset(id, text) {
+        const input = document.getElementById(`custom-tpl-${id}`);
+        if (input) {
+            input.value = text;
+            updateBlockConfig(id, 'customTpl', text);
+        }
+    }
+
+    function toggleSettings(id) {
+        const el = document.getElementById(`settings-${id}`);
+        if (el) el.classList.toggle('active');
     }
 
     function updateBlockConfig(id, k, v) {
@@ -450,42 +509,52 @@ function toggleSettings(id) {
     }
 
     function removeBlock(id) {
-        pushHistory(); // Record state before change
+        pushHistory();
         blocks = blocks.filter(b => b.id !== id);
         renderBlocks();
         showToast("代码块已移除", true);
     }
 
     function generateOutput() {
-        let res = "";
-        if (DOM.config.globalStart.checked && DOM.config.startText.value.trim()) {
-            res += DOM.config.startText.value + "\n\n";
-        }
-        blocks.forEach(b => {
-            if (b.showTitle) {
-                let defaultTpl = b.type === 'file' ? DOM.config.fileTpl.value : DOM.config.promptTpl.value;
-                let tpl = b.customTpl || defaultTpl;
-                res += tpl.replace('{{name}}', b.name) + "\n";
+        if (pendingRaf) cancelAnimationFrame(pendingRaf);
+
+        pendingRaf = requestAnimationFrame(() => {
+            let res = "";
+            if (DOM.config.globalStart.checked && DOM.config.startText.value.trim()) {
+                res += DOM.config.startText.value + "\n\n";
             }
-            res += b.content + "\n\n";
+            blocks.forEach(b => {
+                if (b.showTitle) {
+                    let defaultTpl = b.type === 'file' ? DOM.config.fileTpl.value : DOM.config.promptTpl.value;
+                    let tpl = b.customTpl || defaultTpl;
+                    res += tpl.replace('{{name}}', b.name) + "\n";
+                }
+                res += b.content + "\n\n";
+            });
+            if (DOM.config.globalEnd.checked && DOM.config.endText.value.trim()) {
+                res += DOM.config.endText.value;
+            }
+
+            const final = res.trim();
+            DOM.outputArea.value = final;
+
+            calculateTokens(final);
+            debouncedSave();
+            pendingRaf = null;
         });
-        if (DOM.config.globalEnd.checked && DOM.config.endText.value.trim()) {
-            res += DOM.config.endText.value;
-        }
-
-        const final = res.trim();
-        DOM.outputArea.value = final;
-
-        calculateTokens(final);
-        saveToLocal();
     }
 
     function createDebouncedGenerate() {
         return debounce(generateOutput, settings.autosaveInterval || 300);
     }
 
+    function createDebouncedSave() {
+        return debounce(saveToLocal, 500);
+    }
+
     function updateDebouncedGenerate() {
         debouncedGenerate = createDebouncedGenerate();
+        debouncedSave = createDebouncedSave();
     }
 
     function debounce(func, wait) {
@@ -502,14 +571,13 @@ function toggleSettings(id) {
             return;
         }
 
+        DOM.tokenDisplay.style.display = '';
         if (!text) {
-            DOM.tokenDisplay.style.display = '';
             DOM.tokenDisplay.innerText = "Tokens: 0";
             return;
         }
 
         const estimated = estimateTokens(text);
-        DOM.tokenDisplay.style.display = '';
         DOM.tokenDisplay.innerText = `Tokens: ~${estimated.toLocaleString()}`;
     }
 
@@ -528,7 +596,7 @@ function toggleSettings(id) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `PromptBlocks_${new Date().getTime()}.txt`;
+        link.download = `PromptBlocks_${Date.now()}.txt`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -557,7 +625,7 @@ function toggleSettings(id) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `PromptBlocks_${new Date().getTime()}.promptblocks`;
+        link.download = `PromptBlocks_${Date.now()}.promptblocks`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -578,7 +646,6 @@ function toggleSettings(id) {
                 try {
                     const data = JSON.parse(ev.target.result);
 
-                    // 验证 JSON schema
                     if (!data.version) {
                         return showToast("无效的项目文件：缺少 version 字段", true);
                     }
@@ -589,13 +656,11 @@ function toggleSettings(id) {
                         return showToast("无效的项目文件：blocks 字段格式错误", true);
                     }
 
-                    // 确认覆盖
                     const confirmMsg = blocks.length > 0
                         ? "导入将覆盖当前所有数据，确定继续吗？"
                         : "确定要导入此项目吗？";
                     if (!confirm(confirmMsg)) return;
 
-                    // 恢复数据
                     blocks = data.blocks;
                     if (data.config) {
                         DOM.config.globalStart.checked = data.config.useGlobalStart ?? true;
@@ -642,7 +707,7 @@ function toggleSettings(id) {
         let total = 0;
         for (let key in localStorage) {
             if (localStorage.hasOwnProperty(key)) {
-                total += localStorage[key].length * 2; // UTF-16 字符大小
+                total += localStorage[key].length * 2;
             }
         }
         return total;
@@ -650,7 +715,7 @@ function toggleSettings(id) {
 
     function checkLocalStorageQuota() {
         const used = getLocalStorageUsage();
-        const max = 5 * 1024 * 1024; // 5MB 保守估计
+        const max = 5 * 1024 * 1024;
         const usagePercent = (used / max) * 100;
         if (usagePercent > 80) {
             showToast(`LocalStorage 使用率 ${Math.round(usagePercent)}%，建议清理或导出数据`, true);
@@ -711,18 +776,15 @@ function toggleSettings(id) {
         const modal = document.getElementById('settings-modal');
         if (!modal) return;
 
-        // 加载当前设置到表单
         document.getElementById('cfg-autosave-interval').value = settings.autosaveInterval || 300;
         document.getElementById('cfg-autosave-interval-display').textContent = (settings.autosaveInterval || 300) + 'ms';
         document.getElementById('cfg-show-token-count').checked = settings.showTokenCount !== false;
         document.getElementById('cfg-confirm-clear').checked = settings.confirmBeforeClear !== false;
 
-        // 绑定 range 滑动显示
         document.getElementById('cfg-autosave-interval').addEventListener('input', function() {
             document.getElementById('cfg-autosave-interval-display').textContent = this.value + 'ms';
         });
 
-        // 渲染自定义预设
         renderPresetList();
 
         modal.classList.add('show');
@@ -738,16 +800,13 @@ function toggleSettings(id) {
         settings.showTokenCount = document.getElementById('cfg-show-token-count').checked;
         settings.confirmBeforeClear = document.getElementById('cfg-confirm-clear').checked;
 
-        // 更新 debounce 间隔
         updateDebouncedGenerate();
 
-        // 保存到 localStorage
         localStorage.setItem('promptBlocksSettings', JSON.stringify(settings));
 
         closeSettings();
         showToast('设置已保存');
 
-        // 触发重新计算 token
         generateOutput();
     }
 
@@ -782,19 +841,28 @@ function toggleSettings(id) {
             ...settings.customPresets.map((p, i) => ({ ...p, isDefault: false, index: i }))
         ];
 
-        list.innerHTML = allPresets.map((p, i) => `
-            <div class="preset-item" data-index="${i}" data-custom="${!p.isDefault}">
+        const fragment = document.createDocumentFragment();
+        allPresets.forEach((p, i) => {
+            const div = document.createElement('div');
+            div.className = 'preset-item';
+            div.setAttribute('data-index', i);
+            div.setAttribute('data-custom', !p.isDefault);
+            div.innerHTML = `
                 ${p.isDefault ? `
                     <span class="preset-text" style="color: var(--text-primary);">${escapeHtml(p.name)}</span>
                 ` : `
-                    <input type="text" value="${escapeHtml(p.name)}" placeholder="模板名称" 
+                    <input type="text" value="${escapeHtml(p.name)}" placeholder="模板名称"
                            onchange="App.updateCustomPreset(${p.index}, 'name', this.value)">
                 `}
                 ${!p.isDefault ? `
                     <button class="preset-delete" onclick="App.deleteCustomPreset(${p.index})"><i data-lucide="trash-2"></i></button>
                 ` : '<span style="width: 28px;"></span>'}
-            </div>
-        `).join('');
+            `;
+            fragment.appendChild(div);
+        });
+
+        list.innerHTML = '';
+        list.appendChild(fragment);
     }
 
     function addCustomPreset() {
@@ -825,9 +893,7 @@ function toggleSettings(id) {
         lucide.createIcons();
     }
 
-    // ---------------- Settings Modal ----------------
-
-    // 暴露公共 API（供 HTML 内联事件调用）
+    // 暴露公共 API
     return {
         applyPreset,
         toggleSettings,
@@ -841,7 +907,6 @@ function toggleSettings(id) {
         canRedo: () => redoStack.length > 0,
         loadTheme,
         setTheme,
-        // Settings API
         openSettings,
         closeSettings,
         saveSettings,
