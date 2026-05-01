@@ -27,10 +27,12 @@
             <div id="file-drop-zone" class="drop-zone">
                 <div class="drop-zone-icon"><i data-lucide="file-down"></i></div>
                 <p class="drop-zone-text">将文件拖拽到此处，或点击下方导入</p>
-                <div class="btn btn-secondary" style="width:100%;" id="btn-import-file"><i data-lucide="folder-open"></i> 浏览本地文件</div>
-                <input type="file" id="file-input" multiple style="display:none">
-                <div class="btn btn-secondary" style="width:100%;" id="btn-import-dir"><i data-lucide="folder-search"></i> 选择目录</div>
-                <input type="file" id="dir-input" multiple webkitdirectory style="display:none">
+                <div class="drop-zone-actions">
+                    <div class="btn btn-secondary" style="width:100%;" id="btn-import-file"><i data-lucide="folder-open"></i> 浏览本地文件</div>
+                    <input type="file" id="file-input" multiple style="display:none">
+                    <div class="btn btn-secondary" style="width:100%;" id="btn-import-dir"><i data-lucide="folder-search"></i> 选择目录</div>
+                    <input type="file" id="dir-input" multiple webkitdirectory style="display:none">
+                </div>
             </div>
 
             <div class="divider"></div>
